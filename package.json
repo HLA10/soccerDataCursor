@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "postinstall": "prisma generate",
     "create-admin": "node scripts/create-admin.js",
     "create-super-user": "node scripts/create-super-user.js",
     "monitor": "node scripts/site-monitor.js",

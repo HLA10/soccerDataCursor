@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
+// Force dynamic rendering to prevent build-time database access
+export const dynamic = 'force-dynamic'
+
 // Helper function to check if a string is a UUID
 function isUUID(str: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

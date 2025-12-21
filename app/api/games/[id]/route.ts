@@ -6,6 +6,9 @@ import { canDelete, canEdit } from "@/lib/permissions"
 import { getTeamLogo } from "@/lib/team-logo-utils"
 import { getOpponentLogo } from "@/lib/opponent-logo-utils"
 
+// Force dynamic rendering to prevent build-time database access
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }

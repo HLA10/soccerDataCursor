@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 
+// Force dynamic rendering to prevent build-time database access
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { token: string } }
