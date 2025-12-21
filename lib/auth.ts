@@ -1,0 +1,238 @@
+import { NextAuthOptions } from "next-auth"
+import CredentialsProvider from "next-auth/providers/credentials"
+import { prisma } from "./prisma"
+import * as bcrypt from "bcryptjs"
+
+// Simple in-memory rate limiting for login attempts
+// Tracks failed attempts per email address
+interface RateLimitRecord {
+  count: number
+  resetTime: number
+}
+
+const loginAttempts: Map<string, RateLimitRecord> = new Map()
+const RATE_LIMIT_WINDOW = 15 * 60 * 1000 // 15 minutes
+const MAX_ATTEMPTS = 5 // 5 attempts per window
+
+function checkRateLimit(email: string): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now()
+  const key = email.toLowerCase()
+  const record = loginAttempts.get(key)
+
+  // Clean up expired entries
+  if (record && now > record.resetTime) {
+    loginAttempts.delete(key)
+  }
+
+  const currentRecord = loginAttempts.get(key)
+
+  if (!currentRecord) {
+    // First attempt - create new record
+    loginAttempts.set(key, {
+      count: 1,
+      resetTime: now + RATE_LIMIT_WINDOW,
+    })
+    return { allowed: true }
+  }
+
+  if (currentRecord.count >= MAX_ATTEMPTS) {
+    // Rate limit exceeded
+    const retryAfter = Math.ceil((currentRecord.resetTime - now) / 1000)
+    return { allowed: false, retryAfter }
+  }
+
+  // Increment count
+  currentRecord.count++
+  return { allowed: true }
+}
+
+function recordFailedAttempt(email: string) {
+  // Failed attempts are already tracked in checkRateLimit
+  // This function is for future use if we want to track differently
+}
+
+export const authOptions: NextAuthOptions = {
+  providers: [
+    CredentialsProvider({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        const timestamp = new Date().toISOString()
+        console.log(`[${timestamp}] 🔐 Authorize called`)
+        console.log(`[${timestamp}]   Email: ${credentials?.email || 'MISSING'}`)
+        console.log(`[${timestamp}]   Password length: ${credentials?.password?.length || 0} chars`)
+        
+        if (!credentials?.email || !credentials?.password) {
+          console.log(`[${timestamp}] ❌ Missing credentials - email: ${!!credentials?.email}, password: ${!!credentials?.password}`)
+          return null
+        }
+
+        // Check rate limiting before processing
+        const rateLimitCheck = checkRateLimit(credentials.email)
+        if (!rateLimitCheck.allowed) {
+          console.log(`[${timestamp}] 🚫 Rate limit exceeded for ${credentials.email}`)
+          throw new Error(
+            `Too many login attempts. Please try again in ${Math.ceil((rateLimitCheck.retryAfter || 0) / 60)} minutes.`
+          )
+        }
+
+        try {
+          console.log(`[${timestamp}] 🔍 Looking up user in database for: ${credentials.email}`)
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email },
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              password: true,
+              role: true,
+              status: true,
+              teamId: true,
+              playerId: true,
+            }
+          })
+
+          if (!user) {
+            console.log(`[${timestamp}] ❌ User not found in database: ${credentials.email}`)
+            return null
+          }
+
+          console.log(`[${timestamp}] ✅ User found in database`)
+          console.log(`[${timestamp}]   User ID: ${user.id}`)
+          console.log(`[${timestamp}]   Email: ${user.email}`)
+          console.log(`[${timestamp}]   Name: ${user.name}`)
+          console.log(`[${timestamp}]   Role: ${user.role}`)
+          console.log(`[${timestamp}]   Status: ${user.status}`)
+          // Don't log password hash in production
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[${timestamp}]   Password hash: ${user.password.substring(0, 20)}...`)
+          }
+
+          // Block pending/rejected users
+          if (user.status === "PENDING") {
+            console.log(`[${timestamp}] ⏳ User is pending approval - blocking login`)
+            throw new Error("Your account is pending approval. Please wait for an admin to approve your registration.")
+          }
+          if (user.status === "REJECTED") {
+            console.log(`[${timestamp}] 🚫 User is rejected - blocking login`)
+            throw new Error("Your account registration was not approved.")
+          }
+
+          // Verify password
+          console.log(`[${timestamp}] 🔐 Verifying password...`)
+          console.log(`[${timestamp}]   Comparing provided password with stored hash`)
+          const isPasswordValid = await bcrypt.compare(
+            credentials.password,
+            user.password
+          )
+          console.log(`[${timestamp}]   Password verification result: ${isPasswordValid ? '✅ VALID' : '❌ INVALID'}`)
+
+          if (!isPasswordValid) {
+            console.log(`[${timestamp}] ❌ Password verification failed`)
+            console.log(`[${timestamp}]   This could mean:`)
+            console.log(`[${timestamp}]   - Password is incorrect`)
+            console.log(`[${timestamp}]   - Password hash in database doesn't match`)
+            // Failed attempt is already counted in checkRateLimit
+            recordFailedAttempt(credentials.email)
+            return null
+          }
+
+          // Successful login - reset rate limit for this email
+          const key = credentials.email.toLowerCase()
+          loginAttempts.delete(key)
+
+          console.log(`[${timestamp}] ✅ Password is valid!`)
+          console.log(`[${timestamp}] 📤 Returning user object to NextAuth:`)
+          console.log(`[${timestamp}]   - ID: ${user.id}`)
+          console.log(`[${timestamp}]   - Email: ${user.email}`)
+          console.log(`[${timestamp}]   - Role: ${user.role}`)
+          
+          // Return user object for NextAuth
+          const userObject = {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            teamId: user.teamId,
+            playerId: user.playerId,
+          }
+          console.log(`[${timestamp}] ✅ Authorization successful - user object returned`)
+          return userObject
+        } catch (error: any) {
+          // Log errors for debugging
+          console.error(`[${timestamp}] 🚨 Auth error occurred:`)
+          console.error(`[${timestamp}]   Error message: ${error.message}`)
+          console.error(`[${timestamp}]   Error code: ${error.code || 'N/A'}`)
+          if (error.stack) {
+            console.error(`[${timestamp}]   Stack trace: ${error.stack.split('\n').slice(0, 3).join('\n')}`)
+          }
+          
+          // For user status errors (pending/rejected), throw to show message
+          if (error.message?.includes("pending approval") || error.message?.includes("not approved")) {
+            console.log(`[${timestamp}]   Throwing error to show user-friendly message`)
+            throw error
+          }
+          
+          // For database/Prisma errors, provide helpful message
+          if (error.code === 'P2021' || error.message?.includes('does not exist') || error.message?.includes('Unknown model')) {
+            console.error(`[${timestamp}]   Database error detected - throwing connection error`)
+            throw new Error("Database connection error. Please ensure the database is properly configured.")
+          }
+          
+          // For other errors, return null (invalid credentials)
+          console.log(`[${timestamp}]   Returning null (invalid credentials)`)
+          return null
+        }
+      }
+    })
+  ],
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.role = (user as any).role
+        token.teamId = (user as any).teamId
+        token.playerId = (user as any).playerId
+      }
+      return token
+    },
+    async session({ session, token }) {
+      // NextAuth expects session to always be defined
+      // If no user is logged in, session.user will be null/undefined
+      if (session?.user && token) {
+        const user = session.user as any
+        user.role = (token.role as string) || "VIEWER"
+        user.id = token.sub || ""
+        user.teamId = (token.teamId as string | null | undefined) || null
+        user.playerId = (token.playerId as string | null | undefined) || null
+      }
+      // Always return the session object (even if user is null)
+      return session
+    }
+  },
+  pages: {
+    signIn: "/login",
+    error: "/error", // Redirect errors to error page
+  },
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  secret: process.env.NEXTAUTH_SECRET || "fallback-secret-for-development-only",
+  debug: process.env.NODE_ENV === "development",
+  // Simplified cookies configuration
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: false, // Set to false for development
+      },
+    },
+  },
+}
+

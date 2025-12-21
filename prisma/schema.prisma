@@ -1,0 +1,692 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String                    @id @default(cuid())
+  email             String                    @unique
+  password          String
+  name              String?
+  role              Role                      @default(VIEWER)
+  status            UserStatus                @default(ACTIVE)
+  teamId            String?
+  playerId          String?                   @unique // Link to Player record for PLAYER role
+  invitedBy         String?
+  emailVerified     Boolean                   @default(false)
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  comments          DevelopmentComment[]
+  team              Team?                     @relation(fields: [teamId], references: [id])
+  player            Player?                   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  invitations       Invitation[]              @relation("CreatedInvitations")
+  scoutedPlayers    ScoutedPlayer[]           @relation("ScoutedBy")
+  matchReports      MatchReport[]             @relation("MatchReportAuthor")
+  trainingTemplates TrainingSessionTemplate[] @relation("TemplateAuthor")
+  generatedReports GeneratedMatchReport[]    @relation("GeneratedReportAuthor")
+
+  @@index([teamId])
+  @@index([status])
+  @@index([role])
+  @@index([email])
+  @@map("users")
+}
+
+model Player {
+  id                 String               @id @default(cuid())
+  name               String
+  position           String
+  jerseyNumber       Int?
+  dateOfBirth        DateTime?
+  photo              String?
+  primaryTeamId      String?
+  isInjured          Boolean              @default(false)
+  isSick             Boolean              @default(false)
+  injuryDescription  String?
+  illnessDescription String?
+  isUnderContract    Boolean              @default(true)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  comments           DevelopmentComment[]
+  gameStats          GameStat[]
+  substitutions      GameStat[]           @relation("Substitutions")
+  illnesses          Illness[]
+  injuries           Injury[]
+  tournamentStats    TournamentStat[]
+  trainingAttendance TrainingAttendance[]
+  taskLoadResponses  TaskLoadResponse[]
+  userAccount        User?                @relation
+  primaryTeam        Team?                @relation("PrimaryTeam", fields: [primaryTeamId], references: [id])
+  teams              TeamPlayer[]
+  matchSquads        MatchSquad[]
+  matchPlayerRatings MatchPlayerRating[]
+
+  @@index([primaryTeamId])
+  @@index([name])
+  @@index([isUnderContract])
+  @@index([isInjured])
+  @@index([isSick])
+  @@map("players")
+}
+
+model Game {
+  id                  String           @id @default(cuid())
+  date                DateTime
+  opponent            String? // Legacy string field for backward compatibility
+  opponentId          String? // New field linking to Opponent model
+  venue               String
+  field               String? // Field name/number
+  competition         String? // Legacy string field for backward compatibility
+  competitionId       String? // New field linking to Competition model
+  score               String?
+  duration            Int? // Duration in minutes
+  teamId              String
+  isHome              Boolean?
+  rating              Float? // Game rating 1-5 stars
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  stats               GameStat[]
+  team                Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  opponentClub        Opponent?        @relation(fields: [opponentId], references: [id], onDelete: SetNull)
+  competitionRelation Competition?     @relation(fields: [competitionId], references: [id], onDelete: SetNull)
+  scoutedPlayers      ScoutedPlayer[]
+  squads              MatchSquad[]
+  formations          MatchFormation[]
+  reports             MatchReport[]
+  generatedReport     GeneratedMatchReport?
+
+  @@index([teamId])
+  @@index([date])
+  @@index([opponentId])
+  @@index([competitionId])
+  @@index([date, teamId])
+  @@map("games")
+}
+
+model Tournament {
+  id        String           @id @default(cuid())
+  name      String
+  season    String
+  startDate DateTime
+  endDate   DateTime?
+  type      String
+  teamId    String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  stats     TournamentStat[]
+  team      Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+  @@index([startDate])
+  @@index([teamId, startDate])
+  @@map("tournaments")
+}
+
+model GameStat {
+  id                   String   @id @default(cuid())
+  playerId             String
+  gameId               String
+  minutes              Int      @default(0)
+  goals                Int      @default(0)
+  assists              Int      @default(0)
+  yellowCards          Int      @default(0)
+  redCards             Int      @default(0)
+  rating               Float?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  assistMinutes        String?
+  goalMinutes          String?
+  position             String?
+  started              Boolean  @default(false)
+  substitutedBy        String?
+  substitutionMinute   Int? // Minute when player was subbed out (if they started)
+  substitutionInMinute Int? // Minute when player came in as substitute
+  substitutions        String? // JSON array of substitution entries for complex scenarios
+  game                 Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  player               Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  substitutedByPlayer  Player?  @relation("Substitutions", fields: [substitutedBy], references: [id])
+
+  @@unique([playerId, gameId])
+  @@index([gameId])
+  @@index([playerId])
+  @@index([gameId, playerId])
+  @@map("game_stats")
+}
+
+model TournamentStat {
+  id           String     @id @default(cuid())
+  playerId     String
+  tournamentId String
+  minutes      Int        @default(0)
+  goals        Int        @default(0)
+  assists      Int        @default(0)
+  appearances  Int        @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  player       Player     @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, tournamentId])
+  @@index([playerId])
+  @@index([tournamentId])
+  @@map("tournament_stats")
+}
+
+model Injury {
+  id          String       @id @default(cuid())
+  playerId    String
+  type        String
+  startDate   DateTime
+  endDate     DateTime?
+  status      InjuryStatus @default(ACTIVE)
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  player      Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId])
+  @@index([status])
+  @@index([playerId, status])
+  @@map("injuries")
+}
+
+model Illness {
+  id          String        @id @default(cuid())
+  playerId    String
+  type        String
+  startDate   DateTime
+  endDate     DateTime?
+  status      IllnessStatus @default(ACTIVE)
+  description String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  player      Player        @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId])
+  @@index([status])
+  @@index([playerId, status])
+  @@map("illnesses")
+}
+
+model DevelopmentComment {
+  id        String   @id @default(cuid())
+  playerId  String
+  authorId  String
+  date      DateTime @default(now())
+  comment   String
+  category  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([playerId])
+  @@index([authorId])
+  @@index([date])
+  @@map("development_comments")
+}
+
+enum Role {
+  SUPER_USER
+  ADMIN
+  COACH
+  VIEWER
+  PLAYER
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum InjuryStatus {
+  ACTIVE
+  RECOVERED
+  INACTIVE
+}
+
+enum IllnessStatus {
+  ACTIVE
+  RECOVERED
+  INACTIVE
+}
+
+enum PreferredFoot {
+  LEFT
+  RIGHT
+  BOTH
+}
+
+enum CompetitionType {
+  CUP
+  TOURNAMENT
+  FRIENDLY
+  MATCH_CAMP
+  CUSTOM
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  MIXED
+}
+
+model Opponent {
+  id             String          @id @default(cuid())
+  name           String
+  location       String?
+  homeField      String?
+  primaryColor   String? // Hex color code
+  secondaryColor String? // Hex color code
+  logo           String? // URL to logo image
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  games          Game[]
+  scoutedPlayers ScoutedPlayer[]
+  teams          OpponentTeam[]
+
+  @@map("opponents")
+}
+
+model OpponentTeam {
+  id         String   @id @default(cuid())
+  name       String // e.g., "U15", "U17", "Senior"
+  gender     Gender
+  age        String? // e.g., "U15", "U17", "Senior", "2008"
+  teamColor  String? // Hex color code for team kit
+  homeField  String? // Specific field for this team
+  opponentId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  opponent   Opponent @relation(fields: [opponentId], references: [id], onDelete: Cascade)
+
+  @@map("opponent_teams")
+}
+
+model ScoutedPlayer {
+  id            String        @id @default(cuid())
+  name          String
+  date          DateTime // When the player was scouted
+  position      String
+  starRating    Int // 1-5 rating
+  preferredFoot PreferredFoot
+  comments      String? // Detailed description/notes
+  gameId        String? // Optional link to specific game
+  opponentId    String // Link to opponent club
+  scoutedById   String // User who scouted this player
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  game          Game?         @relation(fields: [gameId], references: [id], onDelete: SetNull)
+  opponent      Opponent      @relation(fields: [opponentId], references: [id], onDelete: Cascade)
+  scoutedBy     User          @relation("ScoutedBy", fields: [scoutedById], references: [id], onDelete: Cascade)
+
+  @@index([opponentId])
+  @@index([scoutedById])
+  @@index([date])
+  @@map("scouted_players")
+}
+
+model Competition {
+  id          String            @id @default(cuid())
+  name        String
+  type        CompetitionType
+  customType  String? // Custom type name if type is CUSTOM
+  season      String
+  startDate   DateTime?
+  endDate     DateTime?
+  description String?
+  logo        String? // File path/URL to uploaded logo
+  location    String?
+  teamId      String? // Optional - can be shared across teams
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  games       Game[]
+  team        Team?             @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  teams       CompetitionTeam[]
+
+  @@map("competitions")
+}
+
+model CompetitionTeam {
+  id            String      @id @default(cuid())
+  competitionId String
+  teamId        String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  competition   Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  team          Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([competitionId, teamId])
+  @@map("competition_teams")
+}
+
+model Team {
+  id                String                    @id @default(cuid())
+  name              String
+  code              String?                   @unique
+  logo              String? // URL to logo image
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  users             User[]
+  players           TeamPlayer[]
+  primaryPlayers    Player[]                  @relation("PrimaryTeam")
+  games             Game[]
+  tournaments       Tournament[]
+  staff             TeamStaff[]
+  invitations       Invitation[]
+  trainings         TrainingSession[]
+  competitions      Competition[]
+  competitionTeams  CompetitionTeam[]
+  trainingTemplates TrainingSessionTemplate[]
+
+  @@map("teams")
+}
+
+model ClubLogo {
+  id        String   @id @default(cuid())
+  clubName  String   @unique
+  logo      String   // Base64 or URL to logo image
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("club_logos")
+}
+
+model TeamPlayer {
+  id                 String   @id @default(cuid())
+  playerId           String
+  teamId             String
+  isBorrowed         Boolean  @default(false)
+  borrowedFromTeamId String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  player             Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  team               Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, teamId])
+  @@map("team_players")
+}
+
+model Staff {
+  id        String      @id @default(cuid())
+  name      String
+  position  String // Head Coach, Assistant Coach, Physio, Strength Coach, etc.
+  email     String?
+  phone     String?
+  photo     String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  teams     TeamStaff[]
+
+  @@map("staff")
+}
+
+model TeamStaff {
+  id        String   @id @default(cuid())
+  staffId   String
+  teamId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, teamId])
+  @@map("team_staff")
+}
+
+model Invitation {
+  id          String    @id @default(cuid())
+  email       String
+  role        Role
+  teamId      String?
+  token       String    @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   User      @relation("CreatedInvitations", fields: [createdById], references: [id], onDelete: Cascade)
+  team        Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  @@index([email])
+  @@index([token])
+  @@index([expiresAt])
+  @@index([usedAt])
+  @@map("invitations")
+}
+
+enum AbsenceReason {
+  INJURED
+  SICK
+  UNEXCUSED
+  OTHER
+}
+
+enum TrainingIntensityLevel {
+  MICRO
+  MESO
+  MACRO
+  OTHER
+}
+
+enum TrainingStyle {
+  GAME_BASED
+  TECHNICAL
+  ISOLATED
+  RONDO
+  WARM_UP_BALL
+  WARM_UP_NO_BALL
+  GYM
+  OTHER
+}
+
+model TrainingSession {
+  id                String                   @id @default(cuid())
+  date              DateTime
+  startTime         String // Time in HH:mm format
+  endTime           String? // Time in HH:mm format
+  duration          Int? // Duration in minutes
+  location          String?
+  field             String? // Field name/number
+  gathering         String? // Gathering location
+  notes             String?
+  teamId            String
+  seriesId          String? // Optional identifier to group recurring sessions
+  templateId        String? // Reference to template used
+  sessionPlanPdf    String? // File path/URL to uploaded PDF
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
+  team              Team                     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  template          TrainingSessionTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  attendance        TrainingAttendance[]
+  taskLoadResponses TaskLoadResponse[]
+  parts             TrainingSessionPart[]
+
+  @@index([teamId])
+  @@index([date])
+  @@index([teamId, date])
+  @@index([templateId])
+  @@map("training_sessions")
+}
+
+model TrainingAttendance {
+  id                String          @id @default(cuid())
+  trainingSessionId String
+  playerId          String
+  attended          Boolean         @default(true)
+  absenceReason     AbsenceReason?
+  absenceComment    String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  trainingSession   TrainingSession @relation(fields: [trainingSessionId], references: [id], onDelete: Cascade)
+  player            Player          @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([trainingSessionId, playerId])
+  @@index([playerId])
+  @@index([trainingSessionId])
+  @@index([attended])
+  @@map("training_attendance")
+}
+
+model TaskLoadResponse {
+  id                String           @id @default(cuid())
+  playerId          String
+  trainingSessionId String?
+  mentalEffort      Int // 1-100
+  physicalEffort    Int // 1-100
+  timePressure      Int // 1-100
+  performance       Int // 1-100 (inverted - high = bad)
+  effort            Int // 1-100
+  frustration       Int // 1-100
+  submittedAt       DateTime // From Google Forms timestamp
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  player            Player           @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  trainingSession   TrainingSession? @relation(fields: [trainingSessionId], references: [id], onDelete: SetNull)
+
+  @@index([playerId, trainingSessionId])
+  @@map("task_load_responses")
+}
+
+model TrainingSessionPart {
+  id                  String                  @id @default(cuid())
+  trainingSessionId   String
+  partNumber          Int
+  partType            String?
+  withBall            Boolean?
+  duration            Int?
+  classificationLevel TrainingIntensityLevel?
+  classificationStyle TrainingStyle?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  trainingSession     TrainingSession         @relation(fields: [trainingSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([trainingSessionId, partNumber])
+  @@map("training_session_parts")
+}
+
+model TrainingSessionTemplate {
+  id          String                        @id @default(cuid())
+  name        String // Template name (e.g., "Monday Technical Session")
+  description String?
+  teamId      String
+  authorId    String
+  createdAt   DateTime                      @default(now())
+  updatedAt   DateTime                      @updatedAt
+  team        Team                          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  author      User                          @relation("TemplateAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  parts       TrainingSessionTemplatePart[]
+  sessions    TrainingSession[]
+
+  @@map("training_session_templates")
+}
+
+model TrainingSessionTemplatePart {
+  id                  String                  @id @default(cuid())
+  templateId          String
+  partNumber          Int
+  partType            String?
+  withBall            Boolean?
+  duration            Int?
+  classificationLevel TrainingIntensityLevel?
+  classificationStyle TrainingStyle?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  template            TrainingSessionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, partNumber])
+  @@map("training_session_template_parts")
+}
+
+// Match Squad Selection Models
+model MatchSquad {
+  id           String   @id @default(cuid())
+  gameId       String
+  playerId     String
+  isStartingXI Boolean  @default(false)
+  isSubstitute Boolean  @default(false)
+  position     String? // Position on field (GK, CB, LB, RB, CM, LM, RM, ST, etc.)
+  jerseyNumber Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  game         Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  player       Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, playerId])
+  @@index([gameId])
+  @@index([playerId])
+  @@index([isStartingXI])
+  @@index([isSubstitute])
+  @@map("match_squads")
+}
+
+model MatchFormation {
+  id        String   @id @default(cuid())
+  gameId    String
+  name      String // e.g., "4-3-3", "4-4-2", "3-5-2"
+  formation String // JSON string representing formation structure
+  isActive  Boolean  @default(true)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([gameId])
+  @@index([isActive])
+  @@map("match_formations")
+}
+
+model MatchReport {
+  id                   String              @id @default(cuid())
+  gameId               String              @unique
+  postMatchNotes       String?
+  tacticalObservations String?
+  keyMoments           String? // JSON string for key moments (goals, saves, cards, etc.)
+  videoLinks           String[] // Array of video URLs/links
+  overallRating        Float? // Overall team performance rating 1-5
+  areasForImprovement  String?
+  authorId             String
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  game                 Game                @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  author               User                @relation("MatchReportAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  playerRatings        MatchPlayerRating[]
+
+  @@map("match_reports")
+}
+
+model MatchPlayerRating {
+  id                  String      @id @default(cuid())
+  matchReportId       String
+  playerId            String
+  rating              Float? // Player rating 1-5
+  feedback            String? // Coach feedback for this player
+  areasForImprovement String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  matchReport         MatchReport @relation(fields: [matchReportId], references: [id], onDelete: Cascade)
+  player              Player      @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([matchReportId, playerId])
+  @@map("match_player_ratings")
+}
+
+model GeneratedMatchReport {
+  id                String   @id @default(cuid())
+  gameId            String   @unique
+  teamReport        String   // JSON string containing team report sections
+  playerSummaries   String   // JSON string containing player summaries array
+  generatedAt       DateTime @default(now())
+  generatedById     String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  game              Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  generatedBy       User     @relation("GeneratedReportAuthor", fields: [generatedById], references: [id], onDelete: Cascade)
+
+  @@map("generated_match_reports")
+}
