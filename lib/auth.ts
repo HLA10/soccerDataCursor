@@ -222,7 +222,7 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET || "fallback-secret-for-development-only",
   debug: process.env.NODE_ENV === "development",
-  // Simplified cookies configuration
+  // Cookies configuration - secure for production (HTTPS)
   cookies: {
     sessionToken: {
       name: `next-auth.session-token`,
@@ -230,7 +230,7 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: false, // Set to false for development
+        secure: process.env.NODE_ENV === "production", // true for production (HTTPS), false for development
       },
     },
   },
