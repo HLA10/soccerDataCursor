@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "playerId" TEXT;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "invitedBy" TEXT;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "emailVerified" TIMESTAMP(3);
+
