@@ -62,30 +62,38 @@ function LoginForm() {
 
       const result = await Promise.race([signInPromise, timeoutPromise]) as any
 
+      console.log("Login result:", result)
+
       if (result?.error) {
         // Provide more specific error messages
+        console.error("Login error:", result.error)
         if (result.error === "CredentialsSignin") {
-          setError("Invalid email or password")
+          setError("Invalid email or password. Please check your credentials and try again.")
         } else if (result.error.includes("pending approval")) {
           setError("Your account is pending approval. Please wait for an admin to approve your registration.")
         } else if (result.error.includes("not approved")) {
           setError("Your account registration was not approved.")
+        } else if (result.error.includes("Database connection")) {
+          setError("Database connection error. Please contact support.")
         } else {
-          setError(result.error || "Invalid email or password")
+          setError(result.error || "Invalid email or password. Please try again.")
         }
       } else if (result?.ok) {
         // Success - redirect to dashboard
+        console.log("Login successful, redirecting...")
         router.push("/dashboard")
         router.refresh()
       } else {
-        setError("An error occurred. Please try again.")
+        // No error but also no success - this shouldn't happen
+        console.error("Unexpected login result:", result)
+        setError("Login failed. Please check your credentials and try again.")
       }
     } catch (err: any) {
       console.error("Login error:", err)
       if (err.message === "Request timeout") {
-        setError("Login is taking too long. Please check your connection and try again.")
+        setError("Login is taking too long. This might indicate a database connection issue. Please try again or contact support.")
       } else {
-        setError("An error occurred. Please try again.")
+        setError(`Login failed: ${err.message || "An unexpected error occurred. Please try again."}`)
       }
     } finally {
       setLoading(false)

@@ -182,9 +182,15 @@ export const authOptions: NextAuthOptions = {
             throw new Error("Database connection error. Please ensure the database is properly configured.")
           }
           
-          // For other errors, return null (invalid credentials)
-          console.log(`[${timestamp}]   Returning null (invalid credentials)`)
-          return null
+          // For Prisma connection errors
+          if (error.code === 'P1001' || error.message?.includes('Can\'t reach database') || error.message?.includes('Connection')) {
+            console.error(`[${timestamp}]   Database connection failed - DATABASE_URL might be missing or incorrect`)
+            throw new Error("Database connection error. Please check DATABASE_URL environment variable.")
+          }
+          
+          // For other errors, log and throw to show error message
+          console.error(`[${timestamp}]   Unexpected error: ${error.message}`)
+          throw new Error(`Authentication error: ${error.message || 'Unknown error occurred'}`)
         }
       }
     })
