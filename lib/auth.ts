@@ -81,7 +81,7 @@ export const authOptions: NextAuthOptions = {
 
         try {
           console.log(`[${timestamp}] 🔍 Looking up user in database for: ${credentials.email}`)
-          const user = await prisma.user.findUnique({
+          const user = await prisma.users.findUnique({
             where: { email: credentials.email },
             select: {
               id: true,
