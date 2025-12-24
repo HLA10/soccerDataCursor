@@ -49,6 +49,7 @@ model games {
   id           String        @id
   date         DateTime
   opponent     String
+  opponentId   String?
   venue        String
   competition  String
   competitionId String?
@@ -60,6 +61,7 @@ model games {
   game_stats   game_stats[]
   teams        teams         @relation(fields: [teamId], references: [id], onDelete: Cascade)
   competitionRelation competition? @relation(fields: [competitionId], references: [id])
+  opponentClub opponent?     @relation(fields: [opponentId], references: [id])
 }
 
 model illnesses {
@@ -135,6 +137,7 @@ model teams {
   users            users[]
   competitions     competition[]
   competitionTeams competitionTeam[]
+  opponentTeams    opponentTeam[]
 }
 
 model tournament_stats {
@@ -226,6 +229,50 @@ model competitionTeam {
   team          teams        @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   @@unique([competitionId, teamId])
+}
+
+model opponent {
+  id            String          @id @default(uuid())
+  name          String
+  location      String?
+  homeField     String?
+  primaryColor  String?
+  secondaryColor String?
+  logo          String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  games         games[]
+  teams         opponentTeam[]
+  scoutedPlayers scoutedPlayer[]
+}
+
+model opponentTeam {
+  id         String    @id @default(uuid())
+  opponentId String
+  teamId     String?
+  name       String?
+  gender     String?
+  age        String?
+  teamColor  String?
+  homeField  String?
+  createdAt  DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  opponent   opponent  @relation(fields: [opponentId], references: [id], onDelete: Cascade)
+  team       teams?    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([opponentId, teamId])
+}
+
+model scoutedPlayer {
+  id         String    @id @default(uuid())
+  opponentId String
+  playerId   String
+  gameId     String?
+  createdAt  DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  opponent   opponent  @relation(fields: [opponentId], references: [id], onDelete: Cascade)
+
+  @@index([opponentId])
 }
 
 enum IllnessStatus {
