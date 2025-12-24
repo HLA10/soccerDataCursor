@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
 
     // Get player's primary team
     const playerTeam = matchedPlayer.primaryTeamId 
-      ? await prisma.team.findUnique({ where: { id: matchedPlayer.primaryTeamId } })
+      ? await prisma.teams.findUnique({ where: { id: matchedPlayer.primaryTeamId } })
       : matchedPlayer.teams[0]?.team
 
     // Create user account

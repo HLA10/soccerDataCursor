@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify team exists
-    const team = await prisma.team.findUnique({
+    const team = await prisma.teams.findUnique({
       where: { id: finalTeamId },
     })
     if (!team) {
