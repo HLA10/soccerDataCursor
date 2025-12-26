@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if email already exists
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.users.findUnique({
       where: { email },
     })
 
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if player already has an account
-    const existingPlayerAccount = await prisma.user.findUnique({
+    const existingPlayerAccount = await prisma.users.findUnique({
       where: { playerId: matchedPlayer.id },
     })
 
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       : matchedPlayer.teams[0]?.team
 
     // Create user account
-    const user = await prisma.user.create({
+    const user = await prisma.users.create({
       data: {
         email,
         password: hashedPassword,

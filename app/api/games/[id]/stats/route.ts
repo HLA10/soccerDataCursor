@@ -16,11 +16,11 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const stats = await prisma.gameStat.findMany({
+    const stats = await prisma.game_stats.findMany({
       where: { gameId: params.id },
       include: {
-        player: true,
-        substitutedByPlayer: true,
+        players_game_stats_playerIdToplayers: true,
+        players_game_stats_substitutedByToplayers: true,
       },
     })
 
@@ -75,7 +75,7 @@ export async function POST(
       )
     }
 
-    const stat = await prisma.gameStat.upsert({
+    const stat = await prisma.game_stats.upsert({
       where: {
         playerId_gameId: {
           playerId,
@@ -117,8 +117,8 @@ export async function POST(
         assistMinutes: assistMinutes || null,
       },
       include: {
-        player: true,
-        substitutedByPlayer: true,
+        players_game_stats_playerIdToplayers: true,
+        players_game_stats_substitutedByToplayers: true,
       },
     })
 

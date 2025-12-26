@@ -26,20 +26,19 @@ export async function GET(
       logo: cl.logo
     }))
 
-    const game = await prisma.game.findUnique({
+    const game = await prisma.games.findUnique({
       where: { id: params.id },
       include: {
-        stats: {
+        game_stats: {
           include: {
-            player: true,
+            players_game_stats_playerIdToplayers: true,
           },
         },
-        team: {
+        teams: {
           select: {
             id: true,
             name: true,
             code: true,
-            logo: true,
           },
         },
         opponentClub: {
@@ -73,10 +72,10 @@ export async function GET(
     // Apply Djugarden logo to team data and club logos to opponents
     const gameWithLogo = {
       ...game,
-      team: game.team ? {
-        ...game.team,
-        logo: getTeamLogo(game.team),
-      } : game.team,
+      teams: game.teams ? {
+        ...game.teams,
+        logo: getTeamLogo(game.teams),
+      } : game.teams,
       // Apply club logo to opponentClub if it doesn't have one
       opponentClub: game.opponentClub ? {
         ...game.opponentClub,
@@ -109,7 +108,7 @@ export async function PUT(
     const user = session.user as any
     
     // Get game to check team ownership
-    const existingGame = await prisma.game.findUnique({
+    const existingGame = await prisma.games.findUnique({
       where: { id: params.id },
     })
 
@@ -150,21 +149,20 @@ export async function PUT(
       updateData.competitionId = competitionId
     }
 
-    const game = await prisma.game.update({
+    const game = await prisma.games.update({
       where: { id: params.id },
       data: updateData,
       include: {
-        stats: {
+        game_stats: {
           include: {
-            player: true,
+            players_game_stats_playerIdToplayers: true,
           },
         },
-        team: {
+        teams: {
           select: {
             id: true,
             name: true,
             code: true,
-            logo: true,
           },
         },
         opponentClub: {
@@ -200,10 +198,10 @@ export async function PUT(
 
     const gameWithLogo = {
       ...game,
-      team: game.team ? {
-        ...game.team,
-        logo: getTeamLogo(game.team),
-      } : game.team,
+      teams: game.teams ? {
+        ...game.teams,
+        logo: getTeamLogo(game.teams),
+      } : game.teams,
       opponentClub: game.opponentClub ? {
         ...game.opponentClub,
         logo: getOpponentLogo(game.opponentClub, clubLogosArray) || game.opponentClub.logo,
@@ -236,7 +234,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden: Only SUPER_USER can delete data" }, { status: 403 })
     }
 
-    await prisma.game.delete({
+    await prisma.games.delete({
       where: { id: params.id },
     })
 

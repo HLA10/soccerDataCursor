@@ -6,9 +6,8 @@ interface GameData {
   score: string | null
   venue: string
   competition?: string | null
-  duration: number | null
   isHome: boolean | null
-  team?: { name: string } | null
+  teams?: { name: string } | null
 }
 
 interface MatchReportData {
@@ -71,7 +70,7 @@ export async function generateMatchReport(
 
   // Prepare match context
   const opponentName = gameData.opponentClub?.name || gameData.opponent || "Opponent"
-  const teamName = gameData.team?.name || "Our Team"
+  const teamName = gameData.teams?.name || "Our Team"
   const matchContext = `
 Match Information:
 - Date: ${new Date(gameData.date).toLocaleDateString()}
@@ -80,7 +79,7 @@ Match Information:
 - Venue: ${gameData.venue}
 - Competition: ${gameData.competition || "Not specified"}
 - Score: ${gameData.score || "Not recorded"}
-- Duration: ${gameData.duration || 90} minutes
+- Duration: 90 minutes
 - Home/Away: ${gameData.isHome === true ? "Home" : gameData.isHome === false ? "Away" : "Not specified"}
 `
 

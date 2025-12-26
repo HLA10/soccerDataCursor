@@ -13,7 +13,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const gameStats = await prisma.gameStat.findMany({
+    const gameStats = await prisma.game_stats.findMany({
       where: { playerId: params.id },
       include: {
         game: true,

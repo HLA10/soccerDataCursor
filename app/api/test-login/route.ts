@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
 
     console.log("🔵 Test login attempt for:", email)
 
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users.findUnique({
       where: { email },
       select: {
         id: true,

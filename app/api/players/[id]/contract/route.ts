@@ -61,7 +61,7 @@ export async function PUT(
 
     // Verify password if marking as out of contract
     if (isUnderContract === false && password) {
-      const dbUser = await prisma.user.findUnique({
+      const dbUser = await prisma.users.findUnique({
         where: { id: user.id },
       })
 
