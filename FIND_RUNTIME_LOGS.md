@@ -64,3 +64,4 @@ If you can't find Runtime Logs:
 2. Look for "Logs" or "Function Logs" as alternatives
 3. Check if you need to scroll horizontally to see more tabs
 
+

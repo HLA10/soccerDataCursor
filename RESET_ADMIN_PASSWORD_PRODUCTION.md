@@ -59,3 +59,4 @@ node scripts/reset-admin-production.js
 
 This will pull the environment variables from Vercel automatically.
 
+

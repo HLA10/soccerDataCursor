@@ -52,3 +52,4 @@ ALTER TABLE "competitionTeam" ADD CONSTRAINT IF NOT EXISTS "competitionTeam_team
 -- AddForeignKey (optional - if you want to link games to competition model)
 -- ALTER TABLE "games" ADD CONSTRAINT IF NOT EXISTS "games_competitionId_fkey" FOREIGN KEY ("competitionId") REFERENCES "competition"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
+

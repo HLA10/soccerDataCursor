@@ -12,3 +12,4 @@ CREATE TABLE IF NOT EXISTS "clubLogo" (
 -- CreateIndex
 CREATE UNIQUE INDEX IF NOT EXISTS "clubLogo_clubName_key" ON "clubLogo"("clubName");
 
+

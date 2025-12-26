@@ -38,9 +38,9 @@ export async function GET(request: NextRequest) {
     const games = await prisma.games.findMany({
       where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
       include: {
-        stats: {
+        game_stats: {
           include: {
-            player: true,
+            players_game_stats_playerIdToplayers: true,
           },
         },
         teams: {
@@ -48,7 +48,6 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true,
             code: true,
-            logo: true,
           },
         },
         opponentClub: {

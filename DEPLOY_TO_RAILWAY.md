@@ -105,3 +105,4 @@ DATABASE_URL="your-railway-db-url" node scripts/reset-admin-sql.js
 
 Railway has excellent documentation and support. The setup is much simpler than Vercel + Neon.
 
+

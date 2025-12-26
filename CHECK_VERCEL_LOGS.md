@@ -62,3 +62,4 @@ postgresql://neondb_owner:npg_7OoNATjp0zaX@ep-jolly-hall-ag2bwqco-pooler.c-2.eu-
 3. Check Runtime Logs again - errors should be gone
 4. Try logging in
 
+

@@ -72,3 +72,4 @@ After redeploy:
 3. Make sure you redeployed after adding variables
 4. Check that DATABASE_URL has no extra quotes or spaces
 
+

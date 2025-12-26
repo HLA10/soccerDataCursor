@@ -133,3 +133,4 @@ Railway Dashboard
 - Make sure you redeployed after adding variables
 - Check that variable names are exactly: `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`
 
+

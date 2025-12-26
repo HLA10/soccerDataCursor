@@ -60,3 +60,4 @@ Once the deployment completes without errors:
 - Email: `admin@example.com`
 - Password: `admin123456`
 
+

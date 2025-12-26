@@ -3,52 +3,12 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import { prisma } from "./prisma"
 import * as bcrypt from "bcryptjs"
 
-// Simple in-memory rate limiting for login attempts
-// Tracks failed attempts per email address
-interface RateLimitRecord {
-  count: number
-  resetTime: number
-}
-
-const loginAttempts: Map<string, RateLimitRecord> = new Map()
-const RATE_LIMIT_WINDOW = 15 * 60 * 1000 // 15 minutes
-const MAX_ATTEMPTS = 5 // 5 attempts per window
-
-function checkRateLimit(email: string): { allowed: boolean; retryAfter?: number } {
-  const now = Date.now()
-  const key = email.toLowerCase()
-  const record = loginAttempts.get(key)
-
-  // Clean up expired entries
-  if (record && now > record.resetTime) {
-    loginAttempts.delete(key)
-  }
-
-  const currentRecord = loginAttempts.get(key)
-
-  if (!currentRecord) {
-    // First attempt - create new record
-    loginAttempts.set(key, {
-      count: 1,
-      resetTime: now + RATE_LIMIT_WINDOW,
-    })
-    return { allowed: true }
-  }
-
-  if (currentRecord.count >= MAX_ATTEMPTS) {
-    // Rate limit exceeded
-    const retryAfter = Math.ceil((currentRecord.resetTime - now) / 1000)
-    return { allowed: false, retryAfter }
-  }
-
-  // Increment count
-  currentRecord.count++
-  return { allowed: true }
-}
-
-function recordFailedAttempt(email: string) {
-  // Failed attempts are already tracked in checkRateLimit
-  // This function is for future use if we want to track differently
+// Validate NEXTAUTH_URL is set in production
+if (process.env.NODE_ENV === "production" && !process.env.NEXTAUTH_URL) {
+  throw new Error(
+    "NEXTAUTH_URL environment variable is required in production. " +
+    "Please set it to your application URL (e.g., https://your-app.vercel.app)"
+  )
 }
 
 export const authOptions: NextAuthOptions = {
@@ -68,15 +28,6 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) {
           console.log(`[${timestamp}] ❌ Missing credentials - email: ${!!credentials?.email}, password: ${!!credentials?.password}`)
           return null
-        }
-
-        // Check rate limiting before processing
-        const rateLimitCheck = checkRateLimit(credentials.email)
-        if (!rateLimitCheck.allowed) {
-          console.log(`[${timestamp}] 🚫 Rate limit exceeded for ${credentials.email}`)
-          throw new Error(
-            `Too many login attempts. Please try again in ${Math.ceil((rateLimitCheck.retryAfter || 0) / 60)} minutes.`
-          )
         }
 
         try {
@@ -135,14 +86,8 @@ export const authOptions: NextAuthOptions = {
             console.log(`[${timestamp}]   This could mean:`)
             console.log(`[${timestamp}]   - Password is incorrect`)
             console.log(`[${timestamp}]   - Password hash in database doesn't match`)
-            // Failed attempt is already counted in checkRateLimit
-            recordFailedAttempt(credentials.email)
             return null
           }
-
-          // Successful login - reset rate limit for this email
-          const key = credentials.email.toLowerCase()
-          loginAttempts.delete(key)
 
           console.log(`[${timestamp}] ✅ Password is valid!`)
           console.log(`[${timestamp}] 📤 Returning user object to NextAuth:`)
@@ -228,7 +173,7 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET || "fallback-secret-for-development-only",
   debug: process.env.NODE_ENV === "development",
-  // Cookies configuration - secure for production (HTTPS)
+  // Cookies configuration - secure flag based on URL (HTTPS detection)
   cookies: {
     sessionToken: {
       name: `next-auth.session-token`,
@@ -236,7 +181,8 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: process.env.NODE_ENV === "production", // true for production (HTTPS), false for development
+        // Use URL-based detection for secure flag - ensures cookies work correctly in Vercel HTTPS environment
+        secure: process.env.NEXTAUTH_URL?.startsWith('https://') ?? true,
       },
     },
   },

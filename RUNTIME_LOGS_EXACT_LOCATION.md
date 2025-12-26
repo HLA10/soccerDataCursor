@@ -95,3 +95,4 @@ Try this:
 3. Look for tabs - "Runtime Logs" should be there
 4. If not, try "Functions" tab as alternative
 
+
