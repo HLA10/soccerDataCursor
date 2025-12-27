@@ -16,11 +16,11 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const stats = await prisma.gameStat.findMany({
+    const stats = await prisma.game_stats.findMany({
       where: { gameId: params.id },
       include: {
-        player: true,
-        substitutedByPlayer: true,
+        players_game_stats_playerIdToplayers: true,
+        players_game_stats_substitutedByToplayers: true,
       },
     })
 
@@ -75,7 +75,7 @@ export async function POST(
       )
     }
 
-    const stat = await prisma.gameStat.upsert({
+    const stat = await prisma.game_stats.upsert({
       where: {
         playerId_gameId: {
           playerId,
@@ -92,13 +92,12 @@ export async function POST(
         started: started || false,
         position: position || null,
         substitutionMinute: substitutionMinute ? parseInt(substitutionMinute) : null,
-        substitutionInMinute: substitutionInMinute ? parseInt(substitutionInMinute) : null,
         substitutedBy: substitutedBy || null,
-        substitutions: substitutions || null,
         goalMinutes: goalMinutes || null,
         assistMinutes: assistMinutes || null,
       },
       create: {
+        id: crypto.randomUUID(),
         playerId,
         gameId: params.id,
         minutes: minutes ? parseInt(minutes) : 0,
@@ -110,15 +109,14 @@ export async function POST(
         started: started || false,
         position: position || null,
         substitutionMinute: substitutionMinute ? parseInt(substitutionMinute) : null,
-        substitutionInMinute: substitutionInMinute ? parseInt(substitutionInMinute) : null,
         substitutedBy: substitutedBy || null,
-        substitutions: substitutions || null,
         goalMinutes: goalMinutes || null,
         assistMinutes: assistMinutes || null,
+        updatedAt: new Date(),
       },
       include: {
-        player: true,
-        substitutedByPlayer: true,
+        players_game_stats_playerIdToplayers: true,
+        players_game_stats_substitutedByToplayers: true,
       },
     })
 

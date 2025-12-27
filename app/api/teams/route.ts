@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const teams = await prisma.team.findMany({
+    const teams = await prisma.teams.findMany({
       orderBy: {
         name: "asc",
       },
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const team = await prisma.team.create({
+    const team = await prisma.teams.create({
       data: {
         name,
         code: code || null,

@@ -9,7 +9,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const user = await prisma.user.update({
+    const user = await prisma.users.update({
       where: { id: params.id },
       data: { status: "REJECTED" },
     })

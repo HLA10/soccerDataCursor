@@ -15,54 +15,9 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    let generatedReport
-    try {
-      generatedReport = await prisma.generatedMatchReport.findUnique({
-        where: { gameId: params.id },
-        include: {
-          generatedBy: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-        },
-      })
-    } catch (dbError: any) {
-      // If table doesn't exist, return helpful error
-      if (dbError.code === "P2021" || dbError.message?.includes("does not exist") || dbError.message?.includes("Unknown model")) {
-        console.error("Database table error:", dbError)
-        return NextResponse.json(
-          { error: "Database table not found. Please run: npx prisma migrate dev" },
-          { status: 500 }
-        )
-      }
-      throw dbError
-    }
-
-    if (!generatedReport) {
-      return NextResponse.json(null)
-    }
-
-    // Parse JSON strings
-    let teamReport, playerSummaries
-    try {
-      teamReport = JSON.parse(generatedReport.teamReport)
-      playerSummaries = JSON.parse(generatedReport.playerSummaries)
-    } catch (parseError) {
-      console.error("Error parsing generated report JSON:", parseError)
-      return NextResponse.json(
-        { error: "Failed to parse stored report data" },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json({
-      ...generatedReport,
-      teamReport,
-      playerSummaries,
-    })
+    // TODO: Add generatedMatchReport model to schema if report storage is needed
+    // For now, reports are generated on-demand and not stored
+    return NextResponse.json(null)
   } catch (error) {
     console.error("Error fetching generated report:", error)
     return NextResponse.json(
@@ -97,10 +52,10 @@ export async function POST(
     }
 
     // Fetch game data
-    const game = await prisma.game.findUnique({
+    const game = await prisma.games.findUnique({
       where: { id: params.id },
       include: {
-        team: {
+        teams: {
           select: {
             id: true,
             name: true,
@@ -112,23 +67,15 @@ export async function POST(
             name: true,
           },
         },
-        stats: {
+        game_stats: {
           include: {
-            player: {
+            players_game_stats_playerIdToplayers: {
               select: {
                 id: true,
                 name: true,
                 position: true,
               },
             },
-          },
-        },
-        reports: {
-          select: {
-            postMatchNotes: true,
-            tacticalObservations: true,
-            overallRating: true,
-            areasForImprovement: true,
           },
         },
       },
@@ -138,11 +85,11 @@ export async function POST(
       return NextResponse.json({ error: "Game not found" }, { status: 404 })
     }
 
-    // Check if match report exists
-    const matchReport = game.reports && game.reports.length > 0 ? game.reports[0] : null
+    // Check if match report exists (TODO: Add reports relation if needed)
+    const matchReport = null
 
     // Validate that we have player stats
-    if (!game.stats || game.stats.length === 0) {
+    if (!game.game_stats || game.game_stats.length === 0) {
       return NextResponse.json(
         { error: "Cannot generate report: No player statistics found for this game. Please add player statistics first." },
         { status: 400 }
@@ -150,10 +97,10 @@ export async function POST(
     }
 
     // Prepare player stats
-    const playerStats = game.stats.map((stat) => ({
-      playerId: stat.player.id,
-      playerName: stat.player.name,
-      position: stat.position || stat.player.position || "Unknown",
+    const playerStats = game.game_stats.map((stat) => ({
+      playerId: stat.players_game_stats_playerIdToplayers.id,
+      playerName: stat.players_game_stats_playerIdToplayers.name,
+      position: stat.position || stat.players_game_stats_playerIdToplayers.position || "Unknown",
       minutes: stat.minutes,
       goals: stat.goals,
       assists: stat.assists,
@@ -172,9 +119,8 @@ export async function POST(
           score: game.score,
           venue: game.venue,
           competition: game.competition,
-          duration: game.duration,
           isHome: game.isHome,
-          team: game.team,
+          teams: game.teams,
         },
         matchReport,
         playerStats
@@ -188,78 +134,18 @@ export async function POST(
       throw new Error(aiError.message || "Failed to generate report with AI")
     }
 
-    // Check if report already exists
-    let existing
-    try {
-      existing = await prisma.generatedMatchReport.findUnique({
-        where: { gameId: params.id },
-      })
-    } catch (dbError: any) {
-      // If table doesn't exist, provide helpful error
-      if (dbError.code === "P2021" || dbError.message?.includes("does not exist") || dbError.message?.includes("Unknown model")) {
-        return NextResponse.json(
-          { error: "Database table not found. Please run: npx prisma migrate dev" },
-          { status: 500 }
-        )
-      }
-      throw dbError
-    }
-
-    if (existing) {
-      // Update existing report
-      const updated = await prisma.generatedMatchReport.update({
-        where: { id: existing.id },
-        data: {
-          teamReport: JSON.stringify(generatedReport.teamReport),
-          playerSummaries: JSON.stringify(generatedReport.playerSummaries),
-          generatedById: user.id,
-          generatedAt: new Date(),
-        },
-        include: {
-          generatedBy: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-        },
-      })
-
-      return NextResponse.json({
-        ...updated,
+    // TODO: Add generatedMatchReport model to schema if report storage is needed
+    // For now, we just return the generated report without storing it
+    return NextResponse.json(
+      {
+        gameId: params.id,
         teamReport: generatedReport.teamReport,
         playerSummaries: generatedReport.playerSummaries,
-      })
-    } else {
-      // Create new report
-      const created = await prisma.generatedMatchReport.create({
-        data: {
-          gameId: params.id,
-          teamReport: JSON.stringify(generatedReport.teamReport),
-          playerSummaries: JSON.stringify(generatedReport.playerSummaries),
-          generatedById: user.id,
-        },
-        include: {
-          generatedBy: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-        },
-      })
-
-      return NextResponse.json(
-        {
-          ...created,
-          teamReport: generatedReport.teamReport,
-          playerSummaries: generatedReport.playerSummaries,
-        },
-        { status: 201 }
-      )
-    }
+        generatedAt: new Date(),
+        generatedById: user.id,
+      },
+      { status: 201 }
+    )
   } catch (error: any) {
     console.error("Error generating match report:", error)
     

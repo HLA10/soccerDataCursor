@@ -52,7 +52,7 @@ export async function GET(
                 logo: true,
               },
             },
-            team: {
+            teams: {
               select: {
                 id: true,
                 name: true,

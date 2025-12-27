@@ -1,112 +1,104 @@
-"use client";
+"use client"
 
-import { useState, useEffect, Suspense } from "react";
-import { signIn, useSession } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import Link from "next/link";
+import { useState, useEffect, Suspense } from "react"
+import { signIn, useSession } from "next-auth/react"
+import { useRouter, useSearchParams } from "next/navigation"
+import Image from "next/image"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import Link from "next/link"
 
 function LoginForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { data: session, status } = useSession();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { data: session, status } = useSession()
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (status === "authenticated" && session) {
-      router.push("/dashboard");
+      router.push("/dashboard")
     }
-  }, [status, session, router]);
+  }, [status, session, router])
 
   // Check for NextAuth error in URL
   useEffect(() => {
-    const errorParam = searchParams?.get("error");
+    const errorParam = searchParams?.get("error")
     if (errorParam) {
       const errorMessages: Record<string, string> = {
-        Configuration:
-          "There is a problem with the server configuration. Please check NEXTAUTH_SECRET environment variable.",
+        Configuration: "There is a problem with the server configuration. Please check NEXTAUTH_SECRET environment variable.",
         AccessDenied: "You do not have permission to sign in.",
-        Verification:
-          "The verification token has expired or has already been used.",
+        Verification: "The verification token has expired or has already been used.",
         CredentialsSignin: "Invalid email or password.",
         Default: "An error occurred during authentication. Please try again.",
-      };
-      setError(errorMessages[errorParam] || errorMessages.Default);
-
+      }
+      setError(errorMessages[errorParam] || errorMessages.Default)
+      
       // Also log the error for debugging
-      console.error("NextAuth error:", errorParam);
+      console.error("NextAuth error:", errorParam)
     }
-  }, [searchParams]);
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+    e.preventDefault()
+    setError("")
+    setLoading(true)
 
     try {
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Request timeout")), 30000); // 30 second timeout
-      });
-      console.log(email, "EMAIL", password);
+        setTimeout(() => reject(new Error("Request timeout")), 30000) // 30 second timeout
+      })
 
       const signInPromise = signIn("credentials", {
         email,
         password,
         redirect: false,
-      });
+      })
 
-      const result = (await Promise.race([
-        signInPromise,
-        timeoutPromise,
-      ])) as any;
+      const result = await Promise.race([signInPromise, timeoutPromise]) as any
+
+      console.log("Login result:", result)
 
       if (result?.error) {
         // Provide more specific error messages
+        console.error("Login error:", result.error)
         if (result.error === "CredentialsSignin") {
-          setError("Invalid email or password<<>>>>>>>");
+          setError("Invalid email or password. Please check your credentials and try again.")
         } else if (result.error.includes("pending approval")) {
-          setError(
-            "Your account is pending approval. Please wait for an admin to approve your registration."
-          );
+          setError("Your account is pending approval. Please wait for an admin to approve your registration.")
         } else if (result.error.includes("not approved")) {
-          setError("Your account registration was not approved.");
+          setError("Your account registration was not approved.")
+        } else if (result.error.includes("Database connection")) {
+          setError("Database connection error. Please contact support.")
         } else {
-          setError(result.error || "Invalid email or password");
+          setError(result.error || "Invalid email or password. Please try again.")
         }
       } else if (result?.ok) {
         // Success - redirect to dashboard
-        router.push("/dashboard");
-        router.refresh();
+        console.log("Login successful, redirecting...")
+        router.push("/dashboard")
+        router.refresh()
       } else {
-        setError("An error occurred. Please try again.");
+        // No error but also no success - this shouldn't happen
+        console.error("Unexpected login result:", result)
+        setError("Login failed. Please check your credentials and try again.")
       }
     } catch (err: any) {
-      console.error("Login error:", err);
+      console.error("Login error:", err)
       if (err.message === "Request timeout") {
-        setError(
-          "Login is taking too long. Please check your connection and try again."
-        );
+        setError("Login is taking too long. This might indicate a database connection issue. Please try again or contact support.")
       } else {
-        setError("An error occurred. Please try again.");
+        setError(`Login failed: ${err.message || "An unexpected error occurred. Please try again."}`)
       }
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -114,10 +106,10 @@ function LoginForm() {
         <CardHeader>
           <CardTitle>Login</CardTitle>
           <div className="flex justify-center mt-4">
-            <Image
-              src="/logo.png.png"
-              alt="Djugarden IF Logo"
-              width={80}
+            <Image 
+              src="/logo.png.png" 
+              alt="Djugarden IF Logo" 
+              width={80} 
               height={80}
               className="object-contain"
             />
@@ -150,7 +142,9 @@ function LoginForm() {
                 disabled={loading}
               />
             </div>
-            {error && <div className="text-sm text-destructive">{error}</div>}
+            {error && (
+              <div className="text-sm text-destructive">{error}</div>
+            )}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Signing in..." : "Sign In"}
             </Button>
@@ -163,29 +157,28 @@ function LoginForm() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
 
 export default function LoginPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>Login</CardTitle>
-              <div className="text-center mt-4">
-                <CardDescription>Djugarden IF</CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center">Loading...</div>
-            </CardContent>
-          </Card>
-        </div>
-      }
-    >
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Login</CardTitle>
+            <div className="text-center mt-4">
+              <CardDescription>Djugarden IF</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center">Loading...</div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
       <LoginForm />
     </Suspense>
-  );
+  )
 }
+

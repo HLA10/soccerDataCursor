@@ -61,7 +61,7 @@ export async function PUT(
 
     // Verify password if marking as out of contract
     if (isUnderContract === false && password) {
-      const dbUser = await prisma.user.findUnique({
+      const dbUser = await prisma.users.findUnique({
         where: { id: user.id },
       })
 
@@ -92,7 +92,7 @@ export async function PUT(
 
     // If marking as out of contract, remove from all TeamPlayer relationships
     if (isUnderContract === false && player.teams.length > 0) {
-      await prisma.teamPlayer.deleteMany({
+      await prisma.team_players.deleteMany({
         where: {
           playerId: params.id,
         },
@@ -102,7 +102,7 @@ export async function PUT(
     // If marking as under contract again and has a primary team, add back to TeamPlayer
     if (isUnderContract === true && player.primaryTeamId) {
       // Check if TeamPlayer entry exists
-      const existingTeamPlayer = await prisma.teamPlayer.findFirst({
+      const existingTeamPlayer = await prisma.team_players.findFirst({
         where: {
           playerId: params.id,
           teamId: player.primaryTeamId,
@@ -110,7 +110,7 @@ export async function PUT(
       })
 
       if (!existingTeamPlayer) {
-        await prisma.teamPlayer.create({
+        await prisma.team_players.create({
           data: {
             playerId: params.id,
             teamId: player.primaryTeamId,

@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get game with team and players
-    const game = await prisma.game.findUnique({
+    const game = await prisma.games.findUnique({
       where: { id: gameId },
       include: {
         team: {
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     // Send reminders to all players with email accounts
     let sentCount = 0
-    for (const tp of game.team.players) {
+    for (const tp of game.teams.players) {
       if (tp.player.userAccount?.email) {
         await sendGameReminderEmail({
           email: tp.player.userAccount.email,
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
           opponent: game.opponentClub?.name || game.opponent || "TBD",
           date: game.date,
           venue: game.venue,
-          teamName: game.team.name,
+          teamName: game.teams.name,
         })
         sentCount++
       }

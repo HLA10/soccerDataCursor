@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const pendingUsers = await prisma.user.findMany({
+    const pendingUsers = await prisma.users.findMany({
       where: { status: "PENDING" },
       include: {
         team: { select: { id: true, name: true, code: true } },

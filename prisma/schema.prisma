@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model development_comments {
@@ -27,7 +28,7 @@ model game_stats {
   goals                                     Int      @default(0)
   assists                                   Int      @default(0)
   yellowCards                               Int      @default(0)
-  redCards                                  Int      @default(0)
+  redCards                                   Int      @default(0)
   rating                                    Float?
   createdAt                                 DateTime @default(now())
   updatedAt                                 DateTime
@@ -45,18 +46,22 @@ model game_stats {
 }
 
 model games {
-  id          String       @id
-  date        DateTime
-  opponent    String
-  venue       String
-  competition String
-  score       String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime
-  isHome      Boolean?
-  teamId      String
-  game_stats  game_stats[]
-  teams       teams        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  id                  String       @id
+  date                DateTime
+  opponent            String
+  opponentId          String?
+  venue               String
+  competition         String
+  competitionId       String?
+  score               String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime
+  isHome              Boolean?
+  teamId              String
+  game_stats          game_stats[]
+  teams               teams        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  competitionRelation competition? @relation(fields: [competitionId], references: [id])
+  opponentClub        opponent?    @relation(fields: [opponentId], references: [id])
 }
 
 model illnesses {
@@ -120,16 +125,19 @@ model team_players {
 }
 
 model teams {
-  id           String         @id
-  name         String
-  code         String?        @unique
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime
-  games        games[]
-  players      players[]
-  team_players team_players[]
-  tournaments  tournaments[]
-  users        users[]
+  id               String            @id
+  name             String
+  code             String?           @unique
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime
+  games            games[]
+  players          players[]
+  team_players     team_players[]
+  tournaments      tournaments[]
+  users            users[]
+  competitions     competition[]
+  competitionTeams competitionTeam[]
+  opponentTeams    opponentTeam[]
 }
 
 model tournament_stats {
@@ -179,6 +187,92 @@ model users {
   teams                teams?                 @relation(fields: [teamId], references: [id])
 
   @@index([status])
+}
+
+model clubLogo {
+  id        String   @id @default(uuid())
+  clubName  String   @unique
+  logo      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model competition {
+  id          String            @id @default(uuid())
+  name        String
+  type        String
+  customType  String?
+  season      String
+  startDate   DateTime?
+  endDate     DateTime?
+  description String?
+  logo        String?
+  location    String?
+  teamId      String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  team        teams?            @relation(fields: [teamId], references: [id])
+  teams       competitionTeam[]
+  games       games[]
+
+  @@index([teamId])
+  @@index([season])
+}
+
+model competitionTeam {
+  id            String      @id @default(uuid())
+  competitionId String
+  teamId        String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  competition   competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  team          teams       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([competitionId, teamId])
+}
+
+model opponent {
+  id             String          @id @default(uuid())
+  name           String
+  location       String?
+  homeField      String?
+  primaryColor   String?
+  secondaryColor String?
+  logo           String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  games          games[]
+  teams          opponentTeam[]
+  scoutedPlayers scoutedPlayer[]
+}
+
+model opponentTeam {
+  id         String   @id @default(uuid())
+  opponentId String
+  teamId     String?
+  name       String?
+  gender     String?
+  age        String?
+  teamColor  String?
+  homeField  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  opponent   opponent @relation(fields: [opponentId], references: [id], onDelete: Cascade)
+  team       teams?   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([opponentId, teamId])
+}
+
+model scoutedPlayer {
+  id         String   @id @default(uuid())
+  opponentId String
+  playerId   String
+  gameId     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  opponent   opponent @relation(fields: [opponentId], references: [id], onDelete: Cascade)
+
+  @@index([opponentId])
 }
 
 enum IllnessStatus {
