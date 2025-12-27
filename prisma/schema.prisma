@@ -138,7 +138,8 @@ model teams {
   competitions     competition[]
   competitionTeams competitionTeam[]
   opponentTeams    opponentTeam[]
-  invitation       invitation[]
+ invitations invitation[] @relation("TeamInvitations")
+
 }
 
 model tournament_stats {
@@ -285,7 +286,8 @@ model invitation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  team teams @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team teams @relation("TeamInvitations", fields: [teamId], references: [id], onDelete: Cascade)
+
 }
 
 enum IllnessStatus {
