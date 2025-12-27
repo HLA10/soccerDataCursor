@@ -138,6 +138,7 @@ model teams {
   competitions     competition[]
   competitionTeams competitionTeam[]
   opponentTeams    opponentTeam[]
+  invitation       invitation[]
 }
 
 model tournament_stats {
@@ -273,6 +274,18 @@ model scoutedPlayer {
   opponent   opponent @relation(fields: [opponentId], references: [id], onDelete: Cascade)
 
   @@index([opponentId])
+}
+
+model invitation {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  email     String?
+  teamId    String
+  role      Role?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team teams @relation(fields: [teamId], references: [id], onDelete: Cascade)
 }
 
 enum IllnessStatus {
