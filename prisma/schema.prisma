@@ -28,7 +28,7 @@ model game_stats {
   goals                                     Int      @default(0)
   assists                                   Int      @default(0)
   yellowCards                               Int      @default(0)
-  redCards                                  Int      @default(0)
+  redCards                                   Int      @default(0)
   rating                                    Float?
   createdAt                                 DateTime @default(now())
   updatedAt                                 DateTime
