@@ -277,7 +277,7 @@ model scoutedPlayer {
   @@index([opponentId])
 }
 
-model invitation {
+ invitation model and relation {
   id        String   @id @default(uuid())
   token     String   @unique
   email     String?
