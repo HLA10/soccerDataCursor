@@ -277,7 +277,7 @@ model scoutedPlayer {
   @@index([opponentId])
 }
 
- invitation model and relation {
+model invitation {
   id        String   @id @default(uuid())
   token     String   @unique
   email     String?
@@ -287,7 +287,6 @@ model scoutedPlayer {
   updatedAt DateTime @updatedAt
 
   team teams @relation("TeamInvitations", fields: [teamId], references: [id], onDelete: Cascade)
-
 }
 
 enum IllnessStatus {
