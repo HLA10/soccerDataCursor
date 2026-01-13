@@ -1,0 +1,25 @@
+[build]
+  # Base directory (root of your project)
+  base = "."
+  
+  # Build command
+  command = "npm run build"
+  
+  # Publish directory - Leave empty or use .next
+  # Netlify Next.js plugin will handle this automatically
+  publish = ".next"
+
+# Next.js configuration for Netlify
+# Install the plugin: npm install --save-dev @netlify/plugin-nextjs
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Environment variables (set these in Netlify dashboard under Site settings > Environment variables)
+# Required variables:
+# - DATABASE_URL: Your PostgreSQL connection string
+# - NEXTAUTH_SECRET: Secret key for NextAuth (generate with: openssl rand -base64 32)
+# - NEXTAUTH_URL: Your Netlify site URL (e.g., https://your-site.netlify.app)
+
+# Functions directory
+[functions]
+  directory = ".netlify/functions"
