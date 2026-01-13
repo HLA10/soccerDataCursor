@@ -28,7 +28,7 @@ model game_stats {
   goals                                     Int      @default(0)
   assists                                   Int      @default(0)
   yellowCards                               Int      @default(0)
-  redCards                                   Int      @default(0)
+  redCards                                  Int      @default(0)
   rating                                    Float?
   createdAt                                 DateTime @default(now())
   updatedAt                                 DateTime
@@ -138,8 +138,7 @@ model teams {
   competitions     competition[]
   competitionTeams competitionTeam[]
   opponentTeams    opponentTeam[]
- invitations invitation[] @relation("TeamInvitations")
-
+  invitations      invitation[]      @relation("TeamInvitations")
 }
 
 model tournament_stats {
@@ -187,6 +186,7 @@ model users {
   emailVerified        DateTime?
   development_comments development_comments[]
   teams                teams?                 @relation(fields: [teamId], references: [id])
+  createdInvitations   invitation[]           @relation("InvitationCreatedBy")
 
   @@index([status])
 }
@@ -278,13 +278,17 @@ model scoutedPlayer {
 }
 
 model invitation {
-  id        String   @id @default(uuid())
-  token     String   @unique
-  email     String?
-  teamId    String
-  role      Role?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(uuid())
+  token       String    @unique
+  email       String?
+  teamId      String
+  role        Role?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  usedAt      DateTime?
+  expiresAt   DateTime
+  createdById String
+  createdBy   users     @relation("InvitationCreatedBy", fields: [createdById], references: [id])
 
   team teams @relation("TeamInvitations", fields: [teamId], references: [id], onDelete: Cascade)
 }

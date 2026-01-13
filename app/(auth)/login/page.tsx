@@ -18,12 +18,17 @@ function LoginForm() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    if (status === "authenticated" && session) {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (mounted && status === "authenticated" && session) {
       router.push("/dashboard")
     }
-  }, [status, session, router])
+  }, [mounted, status, session, router])
 
   // Check for NextAuth error in URL
   useEffect(() => {
@@ -164,17 +169,10 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Login</CardTitle>
-            <div className="text-center mt-4">
-              <CardDescription>Djugarden IF</CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center">Loading...</div>
-          </CardContent>
-        </Card>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
       </div>
     }>
       <LoginForm />
